@@ -1,0 +1,171 @@
+plugins {
+    id 'java-library'
+    id 'org.jetbrains.kotlin.jvm' version '1.9.0'
+    id 'maven-publish'
+    id 'signing'
+}
+
+group = 'com.sofizpay'
+version = '1.0.0'
+
+// Tasks for running examples (development only - not published)
+task runJavaExample(type: JavaExec) {
+    group = 'examples'
+    description = 'Run the Java SofizPay example'
+    classpath = sourceSets.main.runtimeClasspath + files('examples')
+    mainClass = 'com.sofizpay.sdk.CompleteSofizPayExample'
+    workingDir = file('examples')
+}
+
+task runKotlinExample(type: JavaExec) {
+    group = 'examples'
+    description = 'Run the Kotlin SofizPay example'
+    classpath = sourceSets.main.runtimeClasspath + files('examples')
+    mainClass = 'com.sofizpay.sdk.CompleteSofizPayExampleKt'
+    workingDir = file('examples')
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+// Fix duplicate handling for JAR task
+tasks.withType(Jar) {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+// Create sources jar
+task sourcesJar(type: Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+// Create javadoc jar
+task javadocJar(type: Jar) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+    dependsOn javadoc
+}
+
+// Configure jar task
+jar {
+    manifest {
+        attributes(
+            'Implementation-Title': 'SofizPay SDK for Java/Kotlin',
+            'Implementation-Version': project.version,
+            'Implementation-Vendor': 'SofizPay',
+            'Created-By': "Gradle ${gradle.gradleVersion}",
+            'Build-Jdk': "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})"
+        )
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Kotlin Standard Library
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.0"
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.0"
+    
+    // HTTP Client
+    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'network.lightsail:stellar-sdk:1.5.0'
+    // JSON processing
+    implementation 'com.google.code.gson:gson:2.8.9'
+    
+    // Crypto for signature verification
+    implementation 'org.bouncycastle:bcprov-jdk15on:1.70'
+    
+    // Testing
+    testImplementation 'junit:junit:4.13.2'
+}
+
+// Publishing configuration
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            
+            groupId = project.group
+            artifactId = 'sofizpay-sdk-java'
+            version = project.version
+            
+            // Include sources and javadoc
+            artifact sourcesJar
+            artifact javadocJar
+            
+            pom {
+                name = 'SofizPay SDK for Java/Kotlin'
+                description = 'A powerful Java/Kotlin SDK for Stellar blockchain DZT token payments with real-time transaction monitoring'
+                url = 'https://github.com/kenandarabeh/sofizpay-sdk-java'
+                
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                        distribution = 'repo'
+                    }
+                }
+                
+                developers {
+                    developer {
+                        id = 'sofizpay'
+                        name = 'SofizPay Team'
+                        email = 'support@sofizpay.com'
+                    }
+                }
+                
+                scm {
+                    url = 'https://github.com/kenandarabeh/sofizpay-sdk-java'
+                    connection = 'scm:git:git://github.com/kenandarabeh/sofizpay-sdk-java.git'
+                    developerConnection = 'scm:git:ssh://git@github.com/kenandarabeh/sofizpay-sdk-java.git'
+                }
+                
+                issueManagement {
+                    system = 'GitHub Issues'
+                    url = 'https://github.com/kenandarabeh/sofizpay-sdk-java/issues'
+                }
+            }
+        }
+    }
+    
+    repositories {
+        maven {
+            name = "OSSRH"
+            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+            
+            credentials {
+                username = project.findProperty("SONATYPE_USERNAME") ?: System.getenv("SONATYPE_USERNAME")
+                password = project.findProperty("SONATYPE_PASSWORD") ?: System.getenv("SONATYPE_PASSWORD")
+            }
+        }
+        
+        maven {
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/kenandarabeh/sofizpay-sdk-java"
+            credentials {
+                username = project.findProperty("GITHUB_USERNAME") ?: System.getenv("GITHUB_USERNAME")
+                password = project.findProperty("GITHUB_TOKEN") ?: System.getenv("GITHUB_TOKEN")
+            }
+        }
+    }
+}
+
+// Signing configuration
+signing {
+    required { gradle.taskGraph.hasTask("publish") }
+    sign publishing.publications.maven
+}
+
+// Ensure artifacts are built
+artifacts {
+    archives sourcesJar
+    archives javadocJar
+}
