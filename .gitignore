@@ -59,14 +59,26 @@ hs_err_pid*
 # Gradle wrapper
 !gradle-wrapper.jar
 
-# Publishing credentials (never commit these)
+# Sensitive files - NEVER commit these
 gradle.properties.local
 local.properties
+secrets.properties
+*.key
+*.gpg
+*.asc
+secring.*
+pubring.*
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.staging
+
+# Publishing credentials (never commit these)
 signing.keyId
 signing.password
 signing.secretKeyRingFile
-*.gpg
-*.asc
 
 # Logs
 *.log

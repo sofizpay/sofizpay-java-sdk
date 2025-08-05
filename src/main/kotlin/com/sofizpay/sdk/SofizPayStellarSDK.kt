@@ -85,24 +85,24 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
     }
     
 
-    fun getDZTBalance(accountId: String): BalanceResult {
+    fun getBalance(accountId: String): BalanceResult {
         return try {
             val account = server.accounts().account(accountId)
             
             for (balance in account.balances) {
                 when {
                     balance.assetType.equals("native") -> {
-                        return BalanceResult(true, "Balance retrieved successfully", "${balance.balance} XLM")
+                        return BalanceResult(true, "Balance retrieved successfully", "${balance.balance}")
                     }
                     balance.assetCode == DZT_ASSET_CODE -> {
-                        return BalanceResult(true, "Balance retrieved successfully", "${balance.balance} DZT")
+                        return BalanceResult(true, "Balance retrieved successfully", "${balance.balance}")
                     }
                 }
             }
             
             if (account.balances.isNotEmpty()) {
                 val nativeBalance = account.balances[0]
-                return BalanceResult(true, "DZT not found, showing native balance", "${nativeBalance.balance} XLM")
+                return BalanceResult(true, "Balance not found, showing native balance", "${nativeBalance.balance}")
             }
             
             BalanceResult(true, "No balances found", "0")
@@ -134,11 +134,7 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
             
             val amount = BigDecimal(paymentData.amount)
             
-            val asset = if (DZT_ASSET_CODE == paymentData.assetCode) {
-                Asset.createNonNativeAsset(DZT_ASSET_CODE, DZT_ISSUER)
-            } else {
-                Asset.createNativeAsset()
-            }
+            val asset = Asset.createNonNativeAsset(DZT_ASSET_CODE, DZT_ISSUER)
             
             val destination = paymentData.destination!!
             val paymentOperation = PaymentOperation.builder()
@@ -461,24 +457,41 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
             return CIBTransactionResult(false, "Amount is required.", null)
         }
         
+        if (transactionData.full_name.isNullOrEmpty()) {
+            return CIBTransactionResult(false, "Full name is required.", null)
+        }
+        
+        if (transactionData.phone.isNullOrEmpty()) {
+            return CIBTransactionResult(false, "Phone is required.", null)
+        }
+        
+        if (transactionData.email.isNullOrEmpty()) {
+            return CIBTransactionResult(false, "Email is required.", null)
+        }
+        
         return try {
-            val requestData = mapOf(
-                "account" to transactionData.account,
-                "amount" to transactionData.amount,
-                "reference" to (transactionData.reference ?: "SOFIZPAY-${System.currentTimeMillis()}"),
-                "description" to (transactionData.description ?: "SofizPay transaction")
-            )
+            // Build URL with parameters
+            val urlBuilder = StringBuilder("https://www.sofizpay.com/make-cib-transaction?")
+            urlBuilder.append("account=").append(java.net.URLEncoder.encode(transactionData.account, "UTF-8"))
+            urlBuilder.append("&amount=").append(java.net.URLEncoder.encode(transactionData.amount, "UTF-8"))
+            urlBuilder.append("&full_name=").append(java.net.URLEncoder.encode(transactionData.full_name, "UTF-8"))
+            urlBuilder.append("&phone=").append(java.net.URLEncoder.encode(transactionData.phone, "UTF-8"))
+            urlBuilder.append("&email=").append(java.net.URLEncoder.encode(transactionData.email, "UTF-8"))
             
-            val jsonBody = gson.toJson(requestData)
+            if (!transactionData.memo.isNullOrEmpty()) {
+                urlBuilder.append("&memo=").append(java.net.URLEncoder.encode(transactionData.memo, "UTF-8"))
+            }
+            if (!transactionData.return_url.isNullOrEmpty()) {
+                urlBuilder.append("&return_url=").append(java.net.URLEncoder.encode(transactionData.return_url, "UTF-8"))
+            }
+            urlBuilder.append("&redirect=").append(if (transactionData.redirect) "yes" else "no")
             
-            // إنشاء الطلب / Create request
-            val body = jsonBody.toRequestBody("application/json; charset=utf-8".toMediaType())
+            val fullUrl = urlBuilder.toString()
             
             val request = Request.Builder()
-                .url("https://www.sofizpay.com/make-cib-transaction/") 
-                .post(body)
-                .addHeader("Content-Type", "application/json")
-                .addHeader("Authorization", "Bearer ${transactionData.apiKey ?: "test-key"}")
+                .url(fullUrl)
+                .get()
+                .addHeader("Accept", "application/json")
                 .build()
             
             httpClient.newCall(request).execute().use { response ->
@@ -580,21 +593,7 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
     }
     
 
-    fun createAccount(): AccountCreationResult {
-        return try {
-            val account = org.stellar.sdk.KeyPair.random()
-            
-            AccountCreationResult(
-                true,
-                "New account created successfully",
-                account.accountId,
-                String(account.secretSeed)
-            )
-        } catch (e: Exception) {
-            AccountCreationResult(false, "Error creating account: ${e.message}", null, null)
-        }
-    }
-    
+
 
     override fun close() {
         for (accountId in ArrayList(activeStreams.keys)) {
@@ -626,8 +625,7 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
         var secret: String? = null,
         var destination: String? = null,
         var amount: String? = null,
-        var memo: String? = null,
-        var assetCode: String = "DZT" 
+        var memo: String? = null
     )
     
     data class PaymentResult(
@@ -700,9 +698,12 @@ class SofizPayStellarSDK(private val isTestnet: Boolean = true) : AutoCloseable 
     data class CIBTransactionData(
         var account: String? = null,
         var amount: String? = null,
-        var reference: String? = null,
-        var description: String? = null,
-        var apiKey: String? = null
+        var full_name: String? = null,
+        var phone: String? = null,
+        var email: String? = null,
+        var memo: String? = null,
+        var return_url: String? = null,
+        var redirect: Boolean = true
     )
     
     data class CIBTransactionResult(

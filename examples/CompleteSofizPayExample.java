@@ -13,7 +13,7 @@ public class CompleteSofizPayExample {
 
         String mySecretKey = "YOUR_SECRET_KEY";
         String myPublicKey = "YOUR_PUBLIC_KEY"; 
-        String destination = "DESTINATION_PUBLIC_KEY"; 
+        String destination = "YOUR_DESTINATION_PUBLIC_KEY"; 
 
         System.out.println("\n🔑 Get Public Key from Secret:");
         SofizPayStellarSDK.PublicKeyResult publicKeyResult = sdk.getPublicKey(mySecretKey);
@@ -21,7 +21,7 @@ public class CompleteSofizPayExample {
         System.out.println("Message: " + publicKeyResult.message);
 
         System.out.println("\n💰 Get DZT Balance:");
-        SofizPayStellarSDK.BalanceResult balanceResult = sdk.getDZTBalance(myPublicKey);
+        SofizPayStellarSDK.BalanceResult balanceResult = sdk.getBalance(myPublicKey);
         System.out.println("Balance: " + balanceResult.balance);
         System.out.println("Message: " + balanceResult.message);
 
@@ -31,7 +31,6 @@ public class CompleteSofizPayExample {
         payment.destination = destination;
         payment.amount = "1";
         payment.memo = "WC_ORDER";
-        payment.assetCode = "DZT"; 
         
         SofizPayStellarSDK.PaymentResult paymentResult = sdk.submit(payment);
         System.out.println("Transaction ID: " + paymentResult.transactionId);

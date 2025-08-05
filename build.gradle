@@ -5,25 +5,55 @@ plugins {
     id 'signing'
 }
 
-group = 'com.sofizpay'
-version = '1.0.0'
+group = 'io.github.kenandarabeh'
+version = '1.0.5-SNAPSHOT'
 
-// Tasks for running examples (development only - not published)
+// Task to compile Java examples
+task compileJavaExamples(type: JavaCompile) {
+    group = 'build'
+    description = 'Compile Java example files'
+    
+    source = fileTree('examples') {
+        include 'CompleteSofizPayExample.java'
+    }
+    destinationDirectory = file('build/examples')
+    classpath = sourceSets.main.runtimeClasspath
+    
+    dependsOn compileJava
+}
+
+// Combined task to compile all examples
+task compileExamples {
+    group = 'build'
+    description = 'Compile all example files'
+    dependsOn compileJavaExamples
+}
+
+// Task to run Java example
 task runJavaExample(type: JavaExec) {
     group = 'examples'
     description = 'Run the Java SofizPay example'
-    classpath = sourceSets.main.runtimeClasspath + files('examples')
+    classpath = sourceSets.main.runtimeClasspath + files('build/examples')
     mainClass = 'com.sofizpay.sdk.CompleteSofizPayExample'
     workingDir = file('examples')
+    dependsOn compileJavaExamples
 }
 
 task runKotlinExample(type: JavaExec) {
     group = 'examples'
-    description = 'Run the Kotlin SofizPay example'
-    classpath = sourceSets.main.runtimeClasspath + files('examples')
-    mainClass = 'com.sofizpay.sdk.CompleteSofizPayExampleKt'
+    description = 'Run the Java SofizPay example'
+    classpath = sourceSets.main.runtimeClasspath + files('build/examples')
+    mainClass = 'com.sofizpay.sdk.CompleteSofizPayExample'
     workingDir = file('examples')
+    dependsOn compileJavaExamples
+    
+    doFirst {
+        println "Note: Running Java example instead of Kotlin due to compilation complexity."
+        println "The Kotlin version exists in examples/CompleteSofizPayExample.kt but requires manual compilation."
+    }
 }
+
+
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -54,9 +84,37 @@ jar {
         attributes(
             'Implementation-Title': 'SofizPay SDK for Java/Kotlin',
             'Implementation-Version': project.version,
-            'Implementation-Vendor': 'SofizPay',
+            'Implementation-Vendor': 'kenandarabeh',
             'Created-By': "Gradle ${gradle.gradleVersion}",
             'Build-Jdk': "${System.properties['java.version']} (${System.properties['java.vendor']} ${System.properties['java.vm.version']})"
+        )
+    }
+}
+
+// Create a fat JAR with all dependencies
+task fatJar(type: Jar) {
+    group = 'build'
+    description = 'Create a fat JAR with all dependencies'
+    
+    archiveBaseName = project.name + '-fat'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    
+    with jar
+    
+    // Exclude signature files to avoid conflicts
+    exclude 'META-INF/*.SF'
+    exclude 'META-INF/*.DSA'
+    exclude 'META-INF/*.RSA'
+    
+    manifest {
+        attributes(
+            'Main-Class': 'com.sofizpay.sdk.CompleteSofizPayExample',
+            'Implementation-Title': project.name,
+            'Implementation-Version': project.version
         )
     }
 }
@@ -114,7 +172,7 @@ publishing {
                 
                 developers {
                     developer {
-                        id = 'sofizpay'
+                        id = 'kenandarabeh'
                         name = 'SofizPay Team'
                         email = 'support@sofizpay.com'
                     }
@@ -135,18 +193,17 @@ publishing {
     }
     
     repositories {
+        // Sonatype OSSRH
         maven {
-            name = "OSSRH"
-            def releasesRepoUrl = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
-            def snapshotsRepoUrl = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
-            url = version.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
-            
+            name = "SonatypeOSSRH"
+            url = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
             credentials {
-                username = project.findProperty("SONATYPE_USERNAME") ?: System.getenv("SONATYPE_USERNAME")
-                password = project.findProperty("SONATYPE_PASSWORD") ?: System.getenv("SONATYPE_PASSWORD")
+                username = project.findProperty("ossrhUsername") ?: System.getenv("OSSRH_USERNAME")
+                password = project.findProperty("ossrhPassword") ?: System.getenv("OSSRH_PASSWORD")
             }
         }
         
+        // GitHub Packages
         maven {
             name = "GitHubPackages"
             url = "https://maven.pkg.github.com/kenandarabeh/sofizpay-sdk-java"
@@ -158,9 +215,14 @@ publishing {
     }
 }
 
-// Signing configuration
+// Signing configuration - enabled for Maven Central
 signing {
-    required { gradle.taskGraph.hasTask("publish") }
+    required { gradle.taskGraph.hasTask("publish") || gradle.taskGraph.hasTask("createSonatypeBundle") }
+    def signingKey = findProperty("signingKey") ?: System.getenv("SIGNING_KEY")
+    def signingPassword = findProperty("signingPassword") ?: System.getenv("SIGNING_PASSWORD")
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
     sign publishing.publications.maven
 }
 
@@ -169,3 +231,99 @@ artifacts {
     archives sourcesJar
     archives javadocJar
 }
+
+// Task to create checksums
+task createChecksums {
+    dependsOn jar, sourcesJar, javadocJar, generatePomFileForMavenPublication
+    
+    doLast {
+        def pomFile = tasks.generatePomFileForMavenPublication.destination
+        def files = [
+            jar.archiveFile.get().asFile,
+            sourcesJar.archiveFile.get().asFile,
+            javadocJar.archiveFile.get().asFile,
+            pomFile
+        ]
+        
+        files.each { file ->
+            if (file.exists()) {
+                // Create MD5
+                def md5 = java.security.MessageDigest.getInstance("MD5")
+                file.eachByte(4096) { bytes, size ->
+                    md5.update(bytes, 0, size)
+                }
+                new File("${file}.md5").text = md5.digest().encodeHex().toString()
+                
+                // Create SHA1
+                def sha1 = java.security.MessageDigest.getInstance("SHA-1")
+                file.eachByte(4096) { bytes, size ->
+                    sha1.update(bytes, 0, size)
+                }
+                new File("${file}.sha1").text = sha1.digest().encodeHex().toString()
+            }
+        }
+    }
+}
+
+// Task to create signatures (.asc) for all artifacts
+// This task will sign jar, sources, javadoc, and pom files using GPG
+// Requires gpg installed and configured
+// The .asc files will be created next to each artifact
+// You can set GPG key via environment or gradle.properties
+//
+task createSignatures {
+    dependsOn jar, sourcesJar, javadocJar, generatePomFileForMavenPublication
+    doLast {
+        def files = [
+            jar.archiveFile.get().asFile,
+            sourcesJar.archiveFile.get().asFile,
+            javadocJar.archiveFile.get().asFile,
+            tasks.generatePomFileForMavenPublication.destination
+        ]
+        files.each { file ->
+            if (file.exists()) {
+                def ascFile = new File(file.parent, file.name + ".asc")
+                // Use gpg command line to sign
+                def cmd = ["gpg", "--batch", "--yes", "--armor", "--detach-sign", "--local-user", System.getenv("GPG_KEY_ID") ?: "264FE14834DB9C33946994D53BAEC9D7266DA299", "-o", ascFile.absolutePath, file.absolutePath]
+                println "Signing: ${file.name} -> ${ascFile.name}"
+                def proc = cmd.execute()
+                proc.waitFor()
+                if (proc.exitValue() != 0) {
+                    println "GPG signing failed for ${file.name}: ${proc.err.text}"
+                }
+            }
+        }
+    }
+}
+
+// Task to create bundle for Sonatype Central
+// Add .asc signature files to the bundle
+task createSonatypeBundle(type: Zip) {
+    description = 'Creates a bundle for Sonatype Central submission'
+    group = 'upload'
+    archiveFileName = "${project.name}-${project.version}-bundle.zip"
+    destinationDirectory = layout.buildDirectory.dir('bundles')
+    def groupPath = project.group.replace('.', '/')
+    def artifactPath = "${groupPath}/${project.name}/${project.version}"
+    from(jar.archiveFile) { into(artifactPath) }
+    from(sourcesJar.archiveFile) { into(artifactPath) }
+    from(javadocJar.archiveFile) { into(artifactPath) }
+    from(tasks.named('generatePomFileForMavenPublication')) { into(artifactPath); rename { "${project.name}-${project.version}.pom" } }
+    // Add checksum files
+    from(jar.archiveFile.get().asFile.toString() + '.md5') { into(artifactPath) }
+    from(jar.archiveFile.get().asFile.toString() + '.sha1') { into(artifactPath) }
+    from(sourcesJar.archiveFile.get().asFile.toString() + '.md5') { into(artifactPath) }
+    from(sourcesJar.archiveFile.get().asFile.toString() + '.sha1') { into(artifactPath) }
+    from(javadocJar.archiveFile.get().asFile.toString() + '.md5') { into(artifactPath) }
+    from(javadocJar.archiveFile.get().asFile.toString() + '.sha1') { into(artifactPath) }
+    from(tasks.generatePomFileForMavenPublication.destination.toString() + '.md5') { into(artifactPath); rename { "${project.name}-${project.version}.pom.md5" } }
+    from(tasks.generatePomFileForMavenPublication.destination.toString() + '.sha1') { into(artifactPath); rename { "${project.name}-${project.version}.pom.sha1" } }
+    // Add signature files
+    from(jar.archiveFile.get().asFile.toString() + '.asc') { into(artifactPath) }
+    from(sourcesJar.archiveFile.get().asFile.toString() + '.asc') { into(artifactPath) }
+    from(javadocJar.archiveFile.get().asFile.toString() + '.asc') { into(artifactPath) }
+    from(tasks.generatePomFileForMavenPublication.destination.toString() + '.asc') { into(artifactPath); rename { "${project.name}-${project.version}.pom.asc" } }
+}
+
+// Ensure bundle creation depends on all artifacts, checksums, and signatures
+createSonatypeBundle.dependsOn jar, sourcesJar, javadocJar, generatePomFileForMavenPublication, createChecksums, createSignatures

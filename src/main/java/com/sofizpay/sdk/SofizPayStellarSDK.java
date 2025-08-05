@@ -97,22 +97,22 @@ public class SofizPayStellarSDK {
     }
     
 
-    public BalanceResult getDZTBalance(String accountId) {
+    public BalanceResult getBalance(String accountId) {
         try {
             AccountResponse account = server.accounts().account(accountId);
             
             for (AccountResponse.Balance balance : account.getBalances()) {
                 if (balance.getAssetType().equals("native")) {
-                    return new BalanceResult(true, "Balance retrieved successfully", balance.getBalance() + " DZT");
+                    return new BalanceResult(true, "Balance retrieved successfully", balance.getBalance());
                 } else if (balance.getAssetCode() != null && balance.getAssetCode().equals(DZT_ASSET_CODE)) {
-                    return new BalanceResult(true, "Balance retrieved successfully", balance.getBalance() + " DZT");
+                    return new BalanceResult(true, "Balance retrieved successfully", balance.getBalance());
                 }
             }
             
             List<AccountResponse.Balance> balances = account.getBalances();
             if (!balances.isEmpty()) {
                 AccountResponse.Balance nativeBalance = balances.get(0);
-                return new BalanceResult(true, "DZT not found, showing native balance", nativeBalance.getBalance() + " DZT");
+                return new BalanceResult(true, "Balance not found, showing native balance", nativeBalance.getBalance());
             }
             
             return new BalanceResult(true, "No balances found", "0");
@@ -142,12 +142,7 @@ public class SofizPayStellarSDK {
             
             BigDecimal amount = new BigDecimal(paymentData.amount);
             
-            Asset asset;
-            if (DZT_ASSET_CODE.equals(paymentData.assetCode)) {
-                asset = Asset.createNonNativeAsset(DZT_ASSET_CODE, DZT_ISSUER);
-            } else {
-                asset = Asset.createNativeAsset();
-            }
+            Asset asset = Asset.createNonNativeAsset(DZT_ASSET_CODE, DZT_ISSUER);
             
             PaymentOperation paymentOperation = PaymentOperation.builder()
                     .destination(paymentData.destination)
@@ -459,22 +454,41 @@ public class SofizPayStellarSDK {
             return new CIBTransactionResult(false, "Amount is required.", null);
         }
         
+        if (transactionData.full_name == null || transactionData.full_name.isEmpty()) {
+            return new CIBTransactionResult(false, "Full name is required.", null);
+        }
+        
+        if (transactionData.phone == null || transactionData.phone.isEmpty()) {
+            return new CIBTransactionResult(false, "Phone is required.", null);
+        }
+        
+        if (transactionData.email == null || transactionData.email.isEmpty()) {
+            return new CIBTransactionResult(false, "Email is required.", null);
+        }
+        
         try {
-            Map<String, Object> requestData = new HashMap<>();
-            requestData.put("account", transactionData.account);
-            requestData.put("amount", transactionData.amount);
-            requestData.put("reference", transactionData.reference != null ? transactionData.reference : "SOFIZPAY-" + System.currentTimeMillis());
-            requestData.put("description", transactionData.description != null ? transactionData.description : "SofizPay transaction");
+            // Build URL with parameters
+            StringBuilder urlBuilder = new StringBuilder("https://www.sofizpay.com/make-cib-transaction?");
+            urlBuilder.append("account=").append(java.net.URLEncoder.encode(transactionData.account, "UTF-8"));
+            urlBuilder.append("&amount=").append(java.net.URLEncoder.encode(transactionData.amount, "UTF-8"));
+            urlBuilder.append("&full_name=").append(java.net.URLEncoder.encode(transactionData.full_name, "UTF-8"));
+            urlBuilder.append("&phone=").append(java.net.URLEncoder.encode(transactionData.phone, "UTF-8"));
+            urlBuilder.append("&email=").append(java.net.URLEncoder.encode(transactionData.email, "UTF-8"));
             
-            String jsonBody = gson.toJson(requestData);
+            if (transactionData.memo != null && !transactionData.memo.isEmpty()) {
+                urlBuilder.append("&memo=").append(java.net.URLEncoder.encode(transactionData.memo, "UTF-8"));
+            }
+            if (transactionData.return_url != null && !transactionData.return_url.isEmpty()) {
+                urlBuilder.append("&return_url=").append(java.net.URLEncoder.encode(transactionData.return_url, "UTF-8"));
+            }
+            urlBuilder.append("&redirect=").append(transactionData.redirect ? "yes" : "no");
             
-            RequestBody body = RequestBody.create(jsonBody, MediaType.get("application/json; charset=utf-8"));
+            String fullUrl = urlBuilder.toString();
             
             Request request = new Request.Builder()
-                    .url("https://www.sofizpay.com/make-cib-transaction/") 
-                    .post(body)
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("Authorization", "Bearer " + (transactionData.apiKey != null ? transactionData.apiKey : "test-key"))
+                    .url(fullUrl)
+                    .get()
+                    .addHeader("Accept", "application/json")
                     .build();
             
             try (Response response = httpClient.newCall(request).execute()) {
@@ -564,7 +578,7 @@ public class SofizPayStellarSDK {
             HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
             
             if (response.statusCode() == 200) {
-                return new FundResult(true, "Account funded successfully! Added 10,000 DZT to your account");
+                return new FundResult(true, "Account funded successfully!");
             } else {
                 return new FundResult(false, "Failed to fund account: " + response.statusCode());
             }
@@ -572,23 +586,6 @@ public class SofizPayStellarSDK {
             return new FundResult(false, "Error funding account: " + e.getMessage());
         }
     }
-
-    public AccountCreationResult createAccount() {
-        try {
-            org.stellar.sdk.KeyPair account = org.stellar.sdk.KeyPair.random();
-            
-            return new AccountCreationResult(
-                true,
-                "New account created successfully",
-                account.getAccountId(),
-                String.valueOf(account.getSecretSeed())
-            );
-        } catch (Exception e) {
-            return new AccountCreationResult(false, "Error creating account: " + e.getMessage(), null, null);
-        }
-    }
-    
-
     public void close() {
         for (String accountId : new ArrayList<>(activeStreams.keySet())) {
             stopTransactionStream(accountId);
@@ -620,7 +617,6 @@ public class SofizPayStellarSDK {
         public String destination;
         public String amount;
         public String memo;
-        public String assetCode = "DZT"; 
     }
     
     public static class PaymentResult {
@@ -743,9 +739,12 @@ public class SofizPayStellarSDK {
     public static class CIBTransactionData {
         public String account;
         public String amount;
-        public String reference;
-        public String description;
-        public String apiKey;
+        public String full_name;
+        public String phone;
+        public String email;
+        public String memo;
+        public String return_url;
+        public boolean redirect = true;
     }
     
     public static class CIBTransactionResult {

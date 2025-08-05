@@ -3,9 +3,9 @@
 <div align="center">
   <img src="https://github.com/kenandarabeh/sofizpay-sdk-java/blob/main/assets/sofizpay-logo.png?raw=true" alt="SofizPay Logo" width="200" height="200">
   
-  <h3>🚀 A powerful Java/Kotlin SDK for Stellar blockchain DZT token payments</h3>
+  <h3>🚀 A powerful Java/Kotlin SDK for SofizPay payment processing</h3>
   
-  [![Maven Central](https://img.shields.io/maven-central/v/com.sofizpay/sofizpay-sdk-java.svg)](https://search.maven.org/artifact/com.sofizpay/sofizpay-sdk-java)
+  [![Maven Central](https://img.shields.io/maven-central/v/io.github.kenandarabeh/sofizpay-sdk-java.svg)](https://search.maven.org/artifact/io.github.kenandarabeh/sofizpay-sdk-java)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![GitHub Stars](https://img.shields.io/github/stars/kenandarabeh/sofizpay-sdk-java.svg)](https://github.com/kenandarabeh/sofizpay-sdk-java/stargazers)
   [![Issues](https://img.shields.io/github/issues/kenandarabeh/sofizpay-sdk-java.svg)](https://github.com/kenandarabeh/sofizpay-sdk-java/issues)
@@ -24,7 +24,7 @@
 - [API Reference](#api-reference)
 - [Usage Examples](#usage-examples)
 - [Real-time Transaction Monitoring](#real-time-transaction-monitoring)
-- [CIB Integration](#cib-integration)
+- [Banking Integration](#banking-integration)
 - [Error Handling](#error-handling)
 - [Best Practices](#best-practices)
 - [Java vs Kotlin](#java-vs-kotlin)
@@ -37,28 +37,28 @@
 
 ## 🌟 Overview
 
-SofizPay SDK is a comprehensive Java/Kotlin library for Stellar blockchain DZT token payments with real-time transaction monitoring, CIB bank integration, and advanced payment management capabilities.
+SofizPay SDK is a comprehensive Java/Kotlin library for secure payment processing with real-time transaction monitoring, banking integration, and advanced payment management capabilities.
 
 **Key Benefits:**
-- 🔐 Secure Stellar blockchain integration
+- 🔐 Secure payment processing
 - ⚡ Real-time transaction monitoring with callbacks
 - 🎯 Simple, intuitive API for both Java and Kotlin
-- 🏦 CIB bank transaction support
+- 🏦 Banking transaction support
 - 📊 Comprehensive transaction history and search
 - 🔍 Advanced signature verification
-- 🌐 Testnet and Mainnet support
+- 🌐 Testnet and Production environment support
 
 ---
 
 ## ✨ Features
 
-- ✅ **Send DZT/XLM Payments**: Secure token transfers with memo support
+- ✅ **Send Payments**: Secure payment transfers with memo support
 - ✅ **Transaction History**: Retrieve and filter transaction records with pagination
-- ✅ **Balance Checking**: Real-time DZT and XLM balance queries
+- ✅ **Balance Checking**: Real-time balance queries
 - ✅ **Transaction Search**: Find transactions by memo, hash, or account
 - ✅ **Real-time Streams**: Live transaction monitoring with customizable callbacks
-- ✅ **CIB Transactions**: Create CIB bank transactions for fiat deposits
-- ✅ **Account Management**: Create new accounts and fund from testnet faucet
+- ✅ **Banking Transactions**: Create bank transactions for deposits
+- ✅ **Account Management**: Create new accounts and manage payment credentials
 - ✅ **Signature Verification**: RSA signature validation for secure communications
 - ✅ **Error Handling**: Robust error management and detailed reporting
 - ✅ **Kotlin Support**: Modern Kotlin implementation with data classes and coroutines-ready
@@ -70,23 +70,23 @@ SofizPay SDK is a comprehensive Java/Kotlin library for Stellar blockchain DZT t
 ### Gradle (Groovy)
 ```gradle
 dependencies {
-    implementation 'com.sofizpay:sofizpay-sdk-java:1.0.0'
+    implementation 'io.github.kenandarabeh:sofizpay-sdk-java:1.0.5-SNAPSHOT'
 }
 ```
 
 ### Gradle (Kotlin DSL)
 ```kotlin
 dependencies {
-    implementation("com.sofizpay:sofizpay-sdk-java:1.0.0")
+    implementation("io.github.kenandarabeh:sofizpay-sdk-java:1.0.5-SNAPSHOT")
 }
 ```
 
 ### Maven
 ```xml
 <dependency>
-    <groupId>com.sofizpay</groupId>
-    <artifactId>sofizpay-sdk-java</artifactId>
-    <version>1.0.0</version>
+  <groupId>io.github.kenandarabeh</groupId>
+  <artifactId>sofizpay-sdk-java</artifactId>
+  <version>1.0.5-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -114,10 +114,9 @@ public class QuickStart {
             // Create payment data
             SofizPayStellarSDK.PaymentData paymentData = new SofizPayStellarSDK.PaymentData();
             paymentData.secret = "YOUR_SECRET_KEY";
-            paymentData.destination = "DESTINATION_PUBLIC_KEY";
+            paymentData.destination = "DESTINATION_ADDRESS";
             paymentData.amount = "10.0";
             paymentData.memo = "Payment for services";
-            paymentData.assetCode = "DZT"; // or "XLM"
             
             // Send payment
             SofizPayStellarSDK.PaymentResult result = sdk.submit(paymentData);
@@ -144,10 +143,9 @@ fun main() {
         // Create payment data
         val paymentData = SofizPayStellarSDK.PaymentData(
             secret = "YOUR_SECRET_KEY",
-            destination = "DESTINATION_PUBLIC_KEY",
+            destination = "DESTINATION_ADDRESS",
             amount = "10.0",
-            memo = "Payment for services",
-            assetCode = "DZT" // or "XLM"
+            memo = "Payment for services"
         )
         
         // Send payment
@@ -169,16 +167,15 @@ fun main() {
 ### Core Payment Methods
 
 #### `submit()` - Send Payment
-Send DZT or XLM payments with memo support.
+Send payments with memo support.
 
 **Java:**
 ```java
 PaymentData paymentData = new PaymentData();
 paymentData.secret = "SECRET_KEY";
-paymentData.destination = "DESTINATION_PUBLIC_KEY";
+paymentData.destination = "DESTINATION_ADDRESS";
 paymentData.amount = "10.0";
 paymentData.memo = "Payment memo";
-paymentData.assetCode = "DZT"; // "DZT" or "XLM"
 
 PaymentResult result = sdk.submit(paymentData);
 ```
@@ -187,20 +184,19 @@ PaymentResult result = sdk.submit(paymentData);
 ```kotlin
 val paymentData = PaymentData(
     secret = "SECRET_KEY",
-    destination = "DESTINATION_PUBLIC_KEY",
+    destination = "DESTINATION_ADDRESS",
     amount = "10.0",
-    memo = "Payment memo",
-    assetCode = "DZT" // "DZT" or "XLM"
+    memo = "Payment memo"
 )
 
 val result = sdk.submit(paymentData)
 ```
 
-#### `getDZTBalance()` - Check Balance
-Get account balance for DZT and XLM.
+#### `getBalance()` - Check Balance
+Get account balance.
 
 ```java
-BalanceResult balance = sdk.getDZTBalance("ACCOUNT_PUBLIC_KEY");
+BalanceResult balance = sdk.getBalance("ACCOUNT_ADDRESS");
 System.out.println("Balance: " + balance.balance);
 ```
 
@@ -245,7 +241,7 @@ if (result.found) {
 ### Account Management
 
 #### `createAccount()` - Create New Account
-Generate a new Stellar account keypair.
+Generate a new account keypair.
 
 ```java
 AccountCreationResult result = sdk.createAccount();
@@ -254,27 +250,30 @@ System.out.println("Secret Key: " + result.secretKey);
 ```
 
 #### `fundAccountFromFaucet()` - Fund from Testnet Faucet
-Fund account with testnet XLM (testnet only).
+Fund account with testnet funds (testnet only).
 
 ```java
 FundResult result = sdk.fundAccountFromFaucet("ACCOUNT_ID");
 if (result.success) {
-    System.out.println("Account funded with 10,000 XLM");
+    System.out.println("Account funded successfully");
 }
 ```
 
-### CIB Integration
+### Banking Integration
 
-#### `makeCIBTransaction()` - CIB Bank Transaction
-Create CIB bank transactions for fiat deposits.
+#### `makeCIBTransaction()` - Bank Transaction
+Create bank transactions for deposits.
 
 ```java
 CIBTransactionData cibData = new CIBTransactionData();
-cibData.account = "BANK_ACCOUNT_NUMBER";
-cibData.amount = "100.0";
-cibData.reference = "PAYMENT-REF-123";
-cibData.description = "DZT token purchase";
-cibData.apiKey = "YOUR_CIB_API_KEY";
+cibData.account = "YOUR_SECRET_KEY";
+cibData.amount = "150";
+cibData.full_name = "Ahmed";
+cibData.phone = "+213*********";
+cibData.email = "ahmed@sofizpay.com";
+cibData.memo = "Payment";
+cibData.return_url = "https://yoursite.com/payment-success";
+cibData.redirect = true;
 
 CIBTransactionResult result = sdk.makeCIBTransaction(cibData);
 ```
@@ -305,7 +304,7 @@ TransactionCallback callback = new TransactionCallback() {
     @Override
     public void onNewTransaction(TransactionInfo transaction) {
         System.out.println("New transaction: " + transaction.type + 
-                          " Amount: " + transaction.amount + " DZT");
+                          " Amount: " + transaction.amount);
         
         if ("received".equals(transaction.type)) {
             handleIncomingPayment(transaction);
@@ -329,7 +328,7 @@ StreamResult stopResult = sdk.stopTransactionStream("ACCOUNT_ID");
 ```kotlin
 // Start monitoring with lambda
 val streamResult = sdk.startTransactionStream("ACCOUNT_ID") { transaction ->
-    println("New transaction: ${transaction.type} Amount: ${transaction.amount} DZT")
+    println("New transaction: ${transaction.type} Amount: ${transaction.amount}")
     
     if (transaction.type == "received") {
         handleIncomingPayment(transaction)
@@ -346,34 +345,37 @@ val stopResult = sdk.stopTransactionStream("ACCOUNT_ID")
 
 ---
 
-## 🏦 CIB Integration
+## 🏦 Banking Integration
 
-Complete CIB bank integration for fiat-to-crypto transactions.
+Complete banking integration for payment processing.
 
 ```java
-public class CIBPaymentProcessor {
+public class PaymentProcessor {
     private final SofizPayStellarSDK sdk;
     
-    public CIBPaymentProcessor() {
+    public PaymentProcessor() {
         this.sdk = new SofizPayStellarSDK(false); // Production
     }
     
-    public void processCIBDeposit(String account, String amount, String reference) {
+    public void processDeposit(String account, String amount, String fullName, String phone, String email) {
         CIBTransactionData cibData = new CIBTransactionData();
         cibData.account = account;
         cibData.amount = amount;
-        cibData.reference = reference;
-        cibData.description = "DZT token purchase via CIB";
-        cibData.apiKey = System.getenv("CIB_API_KEY");
+        cibData.full_name = fullName;
+        cibData.phone = phone;
+        cibData.email = email;
+        cibData.memo = "Payment deposit";
+        cibData.return_url = "https://yoursite.com/payment-success";
+        cibData.redirect = true;
         
         CIBTransactionResult result = sdk.makeCIBTransaction(cibData);
         
         if (result.success) {
-            System.out.println("CIB transaction successful");
+            System.out.println("Transaction successful");
             Map<String, Object> responseData = result.data;
             // Process response data
         } else {
-            System.err.println("CIB transaction failed: " + result.message);
+            System.err.println("Transaction failed: " + result.message);
         }
     }
     
@@ -402,7 +404,7 @@ public class PaymentSystem {
         try {
             // Check balance first
             String accountId = sdk.getPublicKey(secretKey).publicKey;
-            BalanceResult balance = sdk.getDZTBalance(accountId);
+            BalanceResult balance = sdk.getBalance(accountId);
             
             System.out.println("Current balance: " + balance.balance);
             
@@ -412,7 +414,6 @@ public class PaymentSystem {
             paymentData.destination = destination;
             paymentData.amount = amount;
             paymentData.memo = memo;
-            paymentData.assetCode = "DZT";
             
             // Submit payment
             PaymentResult result = sdk.submit(paymentData);
@@ -468,10 +469,9 @@ class ECommercePaymentProcessor(private val isTestnet: Boolean = true) : AutoClo
             // Create payment
             val paymentData = SofizPayStellarSDK.PaymentData(
                 secret = order.customerSecretKey,
-                destination = getCompanyPublicKey(),
+                destination = getCompanyAddress(),
                 amount = order.amount.toString(),
-                memo = "Order #${order.id}",
-                assetCode = "DZT"
+                memo = "Order #${order.id}"
             )
             
             // Submit payment
@@ -492,7 +492,7 @@ class ECommercePaymentProcessor(private val isTestnet: Boolean = true) : AutoClo
     }
     
     private fun startOrderMonitoring(order: Order) {
-        val companyAccountId = getCompanyPublicKey()
+        val companyAccountId = getCompanyAddress()
         
         sdk.startTransactionStream(companyAccountId) { transaction ->
             if (transaction.memo == "Order #${order.id}" && transaction.type == "received") {
@@ -503,7 +503,7 @@ class ECommercePaymentProcessor(private val isTestnet: Boolean = true) : AutoClo
         }
     }
     
-    private fun getCompanyPublicKey(): String = "COMPANY_PUBLIC_KEY"
+    private fun getCompanyAddress(): String = "COMPANY_ADDRESS"
     private fun logPayment(orderId: String, txId: String) { /* Log to database */ }
     private fun fulfillOrder(order: Order) { /* Fulfill order */ }
     
@@ -549,9 +549,9 @@ public class TransactionAnalytics {
             }
             
             System.out.println("=== Transaction Report ===");
-            System.out.println("Total Received: " + totalReceived + " DZT (" + receivedCount + " transactions)");
-            System.out.println("Total Sent: " + totalSent + " DZT (" + sentCount + " transactions)");
-            System.out.println("Net Flow: " + (totalReceived - totalSent) + " DZT");
+            System.out.println("Total Received: " + totalReceived + " (" + receivedCount + " transactions)");
+            System.out.println("Total Sent: " + totalSent + " (" + sentCount + " transactions)");
+            System.out.println("Net Flow: " + (totalReceived - totalSent));
             
         } catch (Exception e) {
             System.err.println("Error generating report: " + e.getMessage());
@@ -617,7 +617,7 @@ try (SofizPayStellarSDK sdk = new SofizPayStellarSDK()) {
 ### Security
 ```java
 // ✅ Store secret keys securely
-String secretKey = System.getenv("STELLAR_SECRET_KEY"); // From environment
+String secretKey = System.getenv("SECRET_KEY"); // From environment
 // ❌ Never hardcode secret keys in source code
 
 // ✅ Validate inputs
@@ -739,7 +739,7 @@ public void testPaymentSubmission() {
     // Test payment
     PaymentData paymentData = new PaymentData();
     paymentData.secret = account.secretKey;
-    paymentData.destination = "DESTINATION_PUBLIC_KEY";
+    paymentData.destination = "DESTINATION_ADDRESS";
     paymentData.amount = "1.0";
     paymentData.memo = "Test payment";
     
@@ -834,13 +834,12 @@ copies or substantial portions of the Software.
 
 ## 🙏 Acknowledgments
 
-- **Stellar Development Foundation** - For the robust Stellar blockchain platform
-- **Stellar Java SDK** - Foundation library for Stellar operations
+- **Open Source Community** - For continuous improvement and feedback
+- **Java/Kotlin Ecosystem** - For providing robust development tools
 - **OkHttp** - Reliable HTTP client for network operations
 - **Gson** - JSON serialization and deserialization
 - **Gradle** - Build automation and dependency management
 - **JetBrains** - Kotlin language development
-- **Open Source Community** - For continuous improvement and feedback
 
 ---
 
@@ -849,24 +848,25 @@ copies or substantial portions of the Software.
 ### Upcoming Features
 - [ ] **WebSocket Streams** - Real-time WebSocket transaction monitoring
 - [ ] **Multi-signature Support** - Advanced security with multiple signatures
-- [ ] **Token Operations** - Custom token creation and management
 - [ ] **Advanced Analytics** - Built-in transaction analytics and reporting
 - [ ] **Spring Boot Integration** - Auto-configuration for Spring applications
 - [ ] **Reactive Streams** - RxJava/Reactor support for reactive applications
+- [ ] **Mobile SDK** - Android and iOS native SDKs
 
 ### Version History
+- **v1.0.5-SNAPSHOT** - Latest development version with enhanced features
 - **v1.0.0** - Initial release with core payment functionality
 - **v1.0.0-kotlin** - Kotlin implementation with modern language features
 
 ---
 
 <div align="center">
-  <h3>🚀 Ready to integrate blockchain payments?</h3>
+  <h3>🚀 Ready to integrate secure payments?</h3>
   <p>Start building with SofizPay SDK today!</p>
   
   <p>
     <a href="https://github.com/kenandarabeh/sofizpay-sdk-java">GitHub</a> •
-    <a href="https://search.maven.org/artifact/com.kenandarabeh/sofizpay-sdk-java">Maven Central</a> •
+    <a href="https://search.maven.org/artifact/io.github.kenandarabeh/sofizpay-sdk-java">Maven Central</a> •
     <a href="https://github.com/kenandarabeh/sofizpay-sdk-java/issues">Support</a> •
     <a href="mailto:support@sofizpay.com">Contact</a>
   </p>
